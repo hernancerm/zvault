@@ -1,0 +1,105 @@
+#!/bin/zsh -f
+
+## # SUB-COMMANDS
+##
+## - `store <config file>`: Encrypt files and move to destination dir, as per the config file.
+## - `install <config file>`: Decrypt files and move to installation dir, as per the config file.
+##
+## Function pass-throughs: `decrypt`, `encrypt`. Used for testing.
+##
+## # CONFIG FILE
+##
+## Used only by the sub-cmds `store` and `install`. Can be named anyway.
+##
+## Each line has 2 items separated by whitespace. These 2 items are enough for `vault.zsh` to infer
+## data required to both store and install. The caret symbol (~) can be used for the user home:
+##
+## 1. Full path of encrypted file. Must be suffixed with `.enc`.
+## 2. Full path of dir where to install the decrypted file on running `install`.
+##
+## # EXAMPLE
+##
+## Given a `config.txt` with this single line:
+##
+## ~/.dotfiles/vault/aws/config.enc ~/.aws
+##
+## `zsh vault.zsh store config.txt`:
+## - expects `~/.aws/config` to exist, encrypting it to `~/.dotfiles/vault/aws/config.enc`.
+## `zsh vault.zsh install config.txt`:
+## - expects `~/.dotfiles/vault/aws/config.enc` to exist, decrypting it to `~/.aws/config`.
+
+if [[ "${1}" != 'store' ]] && [[ "${1}" != 'install' ]] \
+    && [[ "${1}" != 'encrypt' ]] && [[ "${1}" != 'decrypt' ]]; then
+  echo 'Unrecognized sub-command' >&2
+  exit 1
+fi
+
+if [[ -z "${PASSPHRASE}" ]]; then
+  printf 'Passphrase: '; read -s -r PASSPHRASE; echo
+  if [[ "${1}" = 'store' ]]; then
+    printf 'Passphrase (repeat): '; read -s -r passphrase_verification; echo
+    if [ "${passphrase_verification}" != "${PASSPHRASE}" ]; then
+      echo 'Passphrases do not match. Aborting' >&2
+      exit 1
+    fi
+  fi
+fi
+
+## @param $1 Path of plaintext file.
+## @param $2 Target directory. Use dot (.) for current.
+function encrypt {
+  local name_of_encrypted_file="$(basename ${1}).enc"
+  echo "${PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 \
+    --output "${name_of_encrypted_file}" --symmetric --cipher-algo AES256 "${1}"
+  mv -v "${name_of_encrypted_file}" "${2}/"
+}
+
+## @param $1 Path of encrypted file.
+## @param $2 Target directory. Use dot (.) for current.
+function decrypt {
+  local name_of_plaintext_file="$(basename -s .enc ${1})"
+  echo "${PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 \
+    --output "${name_of_plaintext_file}" --decrypt "${1}"
+  mv -v "${name_of_plaintext_file}" "${2}/"
+}
+
+## @param $1 Config line.
+function infer_globals_from_config_line {
+  full_dir_of_installation="${${${(s: :)1}[2]}/'~'/${HOME}}"
+  full_path_of_encrypted_file="${${${(s: :)1}[1]}/'~'/${HOME}}"
+  name_of_plaintext_file="$(basename -s .enc "${full_path_of_encrypted_file}")"
+  full_dir_of_encrypted_file="${$(dirname "${full_path_of_encrypted_file}")/'~'/${HOME}}"
+  full_path_of_plaintext_file="${full_dir_of_installation}/${name_of_plaintext_file}"
+}
+
+if [[ "${1}" = 'store' ]]; then
+  while IFS='\n' read -r line; do
+    infer_globals_from_config_line "${line}"
+    if ! [[ -f "${full_path_of_plaintext_file}" ]]; then
+      echo "Skipping '${full_path_of_plaintext_file}', it does not exist"
+    else
+      encrypt "${full_path_of_plaintext_file}" "${full_dir_of_encrypted_file}"
+    fi
+  done <<< "$(cat "${2}")"
+  exit 0
+fi
+
+if [[ "${1}" = 'install' ]]; then
+  while IFS='\n' read -r line; do
+    infer_globals_from_config_line "${line}"
+    if ! [[ -f "${full_path_of_encrypted_file}" ]]; then
+      echo "Skipping '${full_path_of_encrypted_file}', it does not exist"
+    elif [[ -f "${full_path_of_plaintext_file}" ]]; then
+      echo "Skipping '${full_path_of_encrypted_file}', exists: '${full_path_of_plaintext_file}'"
+    else
+      decrypt "${full_path_of_encrypted_file}" "${full_dir_of_installation}"
+    fi
+  done <<< "$(cat "${2}")"
+  exit 0
+fi
+
+if [[ "${1}" = 'encrypt' ]]; then
+  encrypt "${2}" "${3}"
+elif [[ "${1}" = 'decrypt' ]]; then
+  decrypt "${2}" "${3}"
+fi
