@@ -92,6 +92,7 @@ if [[ "${1}" = 'install' ]]; then
     elif [[ -f "${full_path_of_plaintext_file}" ]]; then
       echo "Skipping '${full_path_of_encrypted_file}', exists: '${full_path_of_plaintext_file}'"
     else
+      mkdir -p "${full_dir_of_installation}"
       decrypt "${full_path_of_encrypted_file}" "${full_dir_of_installation}"
     fi
   done <<< "$(cat "${2}")"
