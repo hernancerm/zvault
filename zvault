@@ -26,9 +26,11 @@
 ##
 ## `zsh vault.zsh store config.txt`:
 ## - Expects `~/.aws/config` to exist, encrypting it to `~/.dotfiles/vault/aws/config.enc`.
+## - If `~/.dotfiles/vault/aws/config.enc` already exists, then nothing is done.
 ## - Then file permissions are set: `chmod 600 ~/.dotfiles/vault/aws/config.enc`.
 ## `zsh vault.zsh install config.txt`:
 ## - Expects `~/.dotfiles/vault/aws/config.enc` to exist, decrypting it to `~/.aws/config`.
+## - If `~/.aws/config` already exists, then nothing is done.
 ## - Then file permissions are set: `chmod 600 ~/.aws/config`.
 
 if [[ "${1}" != 'store' ]] && [[ "${1}" != 'install' ]] \
@@ -53,12 +55,12 @@ fi
 function encrypt {
   local name_of_encrypted_file="$(basename ${1}).enc"
   echo "${PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 \
-    --output "${name_of_encrypted_file}" --symmetric --cipher-algo AES256 "${1}" >/dev/null
+    --output "${name_of_encrypted_file}" --symmetric --cipher-algo AES256 "${1}" 1>/dev/null
   local gpg_exit_status=${pipestatus[2]}
   if [[ ${gpg_exit_status} -ne 0 ]]; then
     return ${gpg_exit_status}
   fi
-  mv "${name_of_encrypted_file}" "${2}/" >/dev/null
+  mv "${name_of_encrypted_file}" "${2}/" 1>/dev/null
   if [[ ${?} -eq 0 ]] || [[ ${?} -eq 2 ]]; then # Exit code 2 means moving to its same location.
     echo "ENCRYPTED: ${1} -> ${2}/${name_of_encrypted_file}"
   fi
@@ -69,12 +71,12 @@ function encrypt {
 function decrypt {
   local name_of_plaintext_file="$(basename -s .enc ${1})"
   echo "${PASSPHRASE}" | gpg --batch --yes --passphrase-fd 0 \
-    --output "${name_of_plaintext_file}" --decrypt "${1}" >/dev/null
+    --output "${name_of_plaintext_file}" --decrypt "${1}" 1>/dev/null
   local gpg_exit_status=${pipestatus[2]}
   if [[ ${gpg_exit_status} -ne 0 ]]; then
     return ${gpg_exit_status}
   fi
-  mv "${name_of_plaintext_file}" "${2}/" >/dev/null
+  mv "${name_of_plaintext_file}" "${2}/" 1>/dev/null
   if [[ ${?} -eq 0 ]] || [[ ${?} -eq 2 ]]; then # Exit code 2 means moving to its same location.
     echo "DECRYPTED: ${1} -> ${2}/${name_of_plaintext_file}"
   fi
@@ -97,7 +99,7 @@ if [[ "${1}" = 'store' ]]; then
     if ! [[ -f "${full_path_of_plaintext_file}" ]]; then
       echo "Error: No such file: '${full_path_of_plaintext_file}'" 1>&2
       exit_code=1
-    else
+    elif ! [[ -f "${full_path_of_encrypted_file}" ]]; then
       encrypt "${full_path_of_plaintext_file}" "${full_dir_of_encrypted_file}"
       chmod "${permissions}" "${full_path_of_encrypted_file}"
     fi
@@ -112,7 +114,7 @@ if [[ "${1}" = 'install' ]]; then
     if ! [[ -f "${full_path_of_encrypted_file}" ]]; then
       echo "Error: No such file: '${full_path_of_encrypted_file}'" 1>&2
       exit_code=1
-    else
+    elif ! [[ -f "${full_path_of_plaintext_file}" ]]; then
       mkdir -p "${full_dir_of_installation}"
       decrypt "${full_path_of_encrypted_file}" "${full_dir_of_installation}"
       chmod "${permissions}" "${full_path_of_plaintext_file}"
