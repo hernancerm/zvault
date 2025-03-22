@@ -1,37 +1,7 @@
 #!/bin/zsh -f
 
-## # SUB-COMMANDS
-##
-## - `store <config file>`: Encrypt files and move to destination dir, as per the config file.
-## - `install <config file>`: Decrypt files and move to installation dir, as per the config file.
-##
-## Function pass-throughs: `decrypt`, `encrypt`. Used for testing.
-##
-## # CONFIG FILE
-##
-## Used only by the sub-cmds `store` and `install`. Can be named anyway.
-##
-## Each line has 2 items separated by whitespace. These 2 items are enough for `vault.zsh` to infer
-## data required to both store and install. The caret symbol (~) can be used for the user home:
-##
-## 1. Full path of encrypted file. Must be suffixed with `.enc`.
-## 2. Full path of dir where to install the decrypted file on running `install`.
-## 3. File permissions used by `chmod`.
-##
-## # EXAMPLE
-##
-## Given a `config.txt` with this single line:
-##
-## ~/.dotfiles/vault/aws/config.enc ~/.aws 600
-##
-## `zvault store config.txt`:
-## - Expects `~/.aws/config` to exist, encrypting it to `~/.dotfiles/vault/aws/config.enc`.
-## - If `~/.dotfiles/vault/aws/config.enc` already exists, then nothing is done.
-## - Then file permissions are set: `chmod 600 ~/.dotfiles/vault/aws/config.enc`.
-## `zvault install config.txt`:
-## - Expects `~/.dotfiles/vault/aws/config.enc` to exist, decrypting it to `~/.aws/config`.
-## - If `~/.aws/config` already exists, then nothing is done.
-## - Then file permissions are set: `chmod 600 ~/.aws/config`.
+# ZVault - Simple file vault written in Zsh.
+# Homepage: <https://github.com/hernancerm/zvault>.
 
 if [[ "${1}" != 'store' ]] && [[ "${1}" != 'install' ]] \
     && [[ "${1}" != 'encrypt' ]] && [[ "${1}" != 'decrypt' ]]; then
