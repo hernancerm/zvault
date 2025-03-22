@@ -7,7 +7,7 @@ Simple file vault written in Zsh.
 - `store <config file>`: Encrypt files and move to destination dir, as per the config file.
 - `install <config file>`: Decrypt files and move to installation dir, as per the config file.
 
-Function pass-throughs: `decrypt`, `encrypt`. Used for testing.
+Function pass-through: `decrypt`, `encrypt`. Used for testing.
 
 ## Configuration file
 
@@ -38,4 +38,4 @@ Given a `config.txt` with this single line:
 `zvault install config.txt`:
 
 - Expects `~/.dotfiles/vault/aws/config.enc` to exist, decrypting it to `~/.aws/config` if the
-  latter does not exit. If the plaintext file was created, set its permissions with `chmod`.
+  latter does not exist. If the plaintext file was created, set its permissions with `chmod`.
