@@ -58,7 +58,8 @@ function encrypt {
   if [[ ${gpg_exit_status} -ne 0 ]]; then
     return ${gpg_exit_status}
   fi
-  if mv "${name_of_encrypted_file}" "${2}/" >/dev/null; then
+  mv "${name_of_encrypted_file}" "${2}/" >/dev/null
+  if [[ ${?} -eq 0 ]] || [[ ${?} -eq 2 ]]; then # Exit code 2 means moving to its same location.
     echo "ENCRYPTED: ${1} -> ${2}/${name_of_encrypted_file}"
   fi
 }
@@ -73,7 +74,8 @@ function decrypt {
   if [[ ${gpg_exit_status} -ne 0 ]]; then
     return ${gpg_exit_status}
   fi
-  if mv "${name_of_plaintext_file}" "${2}/" >/dev/null; then
+  mv "${name_of_plaintext_file}" "${2}/" >/dev/null
+  if [[ ${?} -eq 0 ]] || [[ ${?} -eq 2 ]]; then # Exit code 2 means moving to its same location.
     echo "DECRYPTED: ${1} -> ${2}/${name_of_plaintext_file}"
   fi
 }
